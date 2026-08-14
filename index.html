@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next-Gen Translation Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-gray-100 to-gray-300 min-h-screen font-sans antialiased text-gray-800 p-6">
+
+<div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-[85vh]">
+    
+    <!-- Header -->
+    <div class="bg-blue-600 text-white p-5 flex justify-between items-center shadow-md z-10">
+        <div>
+            <h2 class="text-xl font-bold flex items-center gap-2">
+                🌍 Real-Time Translator
+            </h2>
+            <p class="text-blue-200 text-sm mt-1">Powered by Gemini</p>
+        </div>
+        
+        <label class="flex items-center cursor-pointer gap-2 bg-blue-700 py-1.5 px-3 rounded-lg border border-blue-500 hover:bg-blue-800 transition">
+            <input type="checkbox" id="ttsToggle" class="w-4 h-4 accent-blue-400 cursor-pointer">
+            <span class="text-sm font-medium select-none">Auto-Speak</span>
+        </label>
+    </div>
+
+    <!-- Role Selector -->
+    <div class="p-4 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
+        <label class="font-semibold text-gray-600 text-sm whitespace-nowrap">You are:</label>
+        <select id="role" class="w-full bg-white border border-gray-300 text-gray-700 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none transition">
+            <option value="customer">🇩🇪 Customer (Speaking German)</option>
+            <option value="employee">🇬🇧 Support (Speaking English)</option>
+        </select>
+    </div>
+
+    <!-- Chat Window -->
+    <div id="chat-box" class="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50 scroll-smooth">
+        <!-- Messages will appear here -->
+    </div>
+
+    <!-- Typing Indicator -->
+    <div id="typing-indicator" class="hidden px-5 pb-2 bg-gray-50">
+        <div class="inline-flex items-center gap-2 bg-gray-200 text-gray-500 text-sm py-1 px-3 rounded-full animate-pulse">
+            <span>✨ Gemini is translating...</span>
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="p-4 bg-white border-t border-gray-200 flex gap-2">
+        <input type="text" id="messageInput" placeholder="Type your message here..." class="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm">
+        <button onclick="sendMessage()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-sm transform active:scale-95">
+            Send
+        </button>
+    </div>
+</div>
+
+<script>
+    const socket = io('http://localhost:8000');
+
+    socket.on('connect', () => {
+        console.log('Connected to Backend!');
+    });
+
+    socket.on('receive_message', (data) => {
+        document.getElementById('typing-indicator').classList.add('hidden');
+
+        const chatBox = document.getElementById('chat-box');
+        const msgDiv = document.createElement('div');
+        
+        // 1. Determine who is viewing the screen right now
+        const currentViewerRole = document.getElementById('role').value;
+        const isMyMessage = currentViewerRole === data.sender_role;
+        
+        const senderName = data.sender_role === 'customer' ? 'Customer' : 'Support';
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // 2. Set dynamic variables based on context
+        let primaryText, hiddenText, buttonLabel;
+        
+        if (isMyMessage) {
+            // I sent this message
+            primaryText = data.original_text;
+            hiddenText = data.translated_text;
+            buttonLabel = '👁️ Show Translation';
+            msgDiv.className = `flex flex-col items-end`; // My messages align right
+            bubbleColor = 'bg-blue-100 border-blue-200';
+        } else {
+            // I received this message
+            primaryText = data.translated_text;
+            hiddenText = data.original_text;
+            buttonLabel = '👁️ Show Original';
+            msgDiv.className = `flex flex-col items-start`; // Their messages align left
+            bubbleColor = 'bg-gray-200 border-gray-300';
+        }
+
+        msgDiv.innerHTML = `
+            <span class="text-xs text-gray-500 mb-1 mx-1 font-semibold">${senderName} • ${time}</span>
+            <div class="${bubbleColor} border rounded-2xl px-4 py-3 max-w-[85%] shadow-sm">
+                <div class="text-gray-900 text-lg">
+                    ${primaryText}
+                </div>
+                
+                <button onclick="toggleText(this)" class="mt-2 text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 transition-colors">
+                    ${buttonLabel}
+                </button>
+                
+                <div class="hidden mt-2 text-sm text-gray-600 bg-white/50 rounded-lg p-2 border border-gray-200/50 italic">
+                    ${hiddenText}
+                </div>
+            </div>
+        `;
+        
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // 3. Only play Text-to-Speech if we RECEIVED the message
+        if (!isMyMessage) {
+            playTTS(data.translated_text, data.sender_role);
+        }
+    });
+
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const role = document.getElementById('role').value;
+        const text = input.value.trim();
+        
+        if (text === '') return;
+
+        document.getElementById('typing-indicator').classList.remove('hidden');
+
+        socket.emit('chat_message', {
+            text: text,
+            sender_role: role
+        });
+
+        input.value = '';
+        input.focus();
+    }
+
+    // Dynamic toggle function
+    function toggleText(button) {
+        const textDiv = button.nextElementSibling;
+        const isHidden = textDiv.classList.contains('hidden');
+        
+        if (isHidden) {
+            textDiv.classList.remove('hidden');
+            // Change button text based on what we are revealing
+            button.innerHTML = button.innerHTML.includes('Translation') ? '🙈 Hide Translation' : '🙈 Hide Original';
+        } else {
+            textDiv.classList.add('hidden');
+            // Revert button text
+            button.innerHTML = button.innerHTML.includes('Translation') ? '👁️ Show Translation' : '👁️ Show Original';
+        }
+    }
+
+    function playTTS(text, senderRole) {
+        const ttsEnabled = document.getElementById('ttsToggle').checked;
+        if (!ttsEnabled) return;
+
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = senderRole === 'customer' ? 'en-US' : 'de-DE';
+        speech.rate = 0.9; 
+        window.speechSynthesis.speak(speech);
+    }
+
+    document.getElementById('messageInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
+
+</body>
+</html>

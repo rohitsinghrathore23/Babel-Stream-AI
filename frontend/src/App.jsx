@@ -214,6 +214,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#06040f] font-sans text-gray-100 flex flex-col selection:bg-violet-500 selection:text-white relative overflow-x-hidden">
       
+      {/* SIDEBAR DRAWER */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
@@ -250,7 +251,6 @@ export default function App() {
                   <p className="text-xs text-purple-500/60 px-2 py-4 text-center italic">No previous saved chats found.</p>
                 ) : (
                   pastChats.map((chat) => {
-                    // Format the timestamp directly into a readable date and time string
                     const chatDate = new Date(chat.timestamp * 1000).toLocaleString([], {
                       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                     });
@@ -271,7 +271,7 @@ export default function App() {
                           <span className="text-[9px] text-purple-500/50">{chatDate}</span>
                         </div>
                       </button>
-                    )
+                    );
                   })
                 )}
               </div>
@@ -280,6 +280,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* HEADER */}
       <header className="w-full bg-[#080514]/90 backdrop-blur-md border-b border-purple-950 py-3.5 px-6 flex justify-between items-center z-30">
         <div className="flex items-center gap-3">
           <button 
@@ -330,6 +331,7 @@ export default function App() {
         )}
       </header>
 
+      {/* MAIN VIEW */}
       <main className="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6 flex flex-col justify-center z-10">
         <AnimatePresence mode="wait">
           {!joined ? (
@@ -341,7 +343,6 @@ export default function App() {
               className="w-full flex flex-col space-y-8 my-auto py-6"
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                
                 <div className="lg:col-span-7 flex flex-col space-y-6">
                   <div className="flex items-center gap-2">
                     <span className="bg-violet-950/80 border border-violet-500/40 text-violet-300 text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">
@@ -458,7 +459,6 @@ export default function App() {
                     </form>
                   </div>
                 </div>
-
               </div>
             </motion.div>
           ) : (
@@ -474,7 +474,6 @@ export default function App() {
                   <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
                   <span className="font-bold text-sm text-white">Room: <span className="text-violet-400">{room}</span></span>
                   <div className="hidden sm:flex gap-1.5">
-                    {/* Displaying Operational Role here */}
                     <span className={`text-[10px] px-2 py-0.5 rounded-full border ${role === 'customer' ? 'bg-emerald-900/50 text-emerald-300 border-emerald-500/30' : 'bg-amber-900/50 text-amber-300 border-amber-500/30'}`}>
                       Role: {role === 'customer' ? 'Customer' : 'Support Agent'}
                     </span>

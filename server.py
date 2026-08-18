@@ -1,19 +1,26 @@
+import os
 import time
 import sqlite3
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, join_room, emit
 from flask_cors import CORS
 import google.generativeai as genai
+from dotenv import load_dotenv
+
+# Load hidden environment variables
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Configure Gemini
-API_KEY = "AQ.Ab8RN6IH5_5yh76iUlWLuzGw3lA-ZTJ46frIdC79TowpdEL22g" 
-genai.configure(api_key=API_KEY)
+# Fetch API key securely from .env
+API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Using the ultra-fast lite model you selected
+if not API_KEY:
+    raise ValueError("⚠️ No API Key found! Please check your .env file.")
+
+genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-flash-lite-latest')
 
 def init_db():
@@ -66,7 +73,7 @@ def save_message_to_db(room, original_text, translated_text, sender_role, target
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"⚠️ DB Message Error: {e} - (Try deleting chat_history.db if this persists!)")
+        print(f"⚠️ DB Message Error: {e}")
 
 def get_messages_from_db(room):
     try:
@@ -145,7 +152,7 @@ def handle_message(data):
         print(f"❌ Critical Error in handle_message: {e}")
         emit("receive_message", {
             "original_text": data.get('text', ''),
-            "translated_text": f"⚠️ System Error: Please check backend terminal.",
+            "translated_text": "⚠️ System Error: Please check backend terminal.",
             "sender_role": data.get('sender_role', ''),
             "target_language": data.get('target_language', 'English'),
             "timestamp": time.time()

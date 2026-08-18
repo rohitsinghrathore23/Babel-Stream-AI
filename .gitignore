@@ -1,0 +1,14 @@
+# Node / Frontend
+node_modules/
+dist/
+.env
+
+# Python / Backend
+__pycache__/
+venv/
+env/
+*.pyc
+
+# Database
+chat_history.db
+*.db
